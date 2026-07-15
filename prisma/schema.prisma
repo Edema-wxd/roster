@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ------------------------------------------------------------
+// Admin account — single row in v1. No password: identifier
+// (email or access code) + signed cookie session (see Project.md §12).
+// ------------------------------------------------------------
+model AdminUser {
+  id         String   @id @default(cuid())
+  identifier String   @unique
+  createdAt  DateTime @default(now())
+}
+
+// ------------------------------------------------------------
+// Person — a tracked partner
+// ------------------------------------------------------------
+enum Gender {
+  WOMAN
+  MAN
+  OTHER
+}
+
+model Person {
+  id       String  @id @default(cuid())
+  name     String
+  color    String
+  notes    String?
+  allergies       String?
+  foodPreferences String?
+  isActive Boolean @default(true)
+
+  gender Gender @default(WOMAN)
+  // Defaulted from gender at creation time (WOMAN/OTHER -> true, MAN -> false),
+  // but always overridable per person — gender itself never hard-gates the UI,
+  // this flag does. All cycle-tracking screens/queries must check this flag.
+  cycleTrackingEnabled Boolean @default(true)
+
+  // Prediction baseline — always user-editable, used until enough
+  // history exists to weight an adaptive average.
+  defaultCycleLength      Int @default(28)
+  defaultPeriodLength     Int @default(5)
+  // Luteal phase length is far less variable than follicular phase and is
+  // the standard anchor for back-calculating a predicted ovulation date
+  // from the next predicted period start.
+  defaultLutealPhaseLength Int @default(14)
+
+  // Denormalized prediction cache, recomputed whenever a cycle is
+  // added/edited/deleted. Avoids recalculating mean/stdev on every
+  // dashboard/calendar load. Source of truth is still Cycle history.
+  predictedCycleLength     Float?
+  predictedVariabilityDays Float?
+  predictionLastCalculated DateTime?
+
+  // Nullable link for future self-login support (see Project.md §6)
+  userId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycles   Cycle[]
+  visits   VisitPerson[]
+  intimacy IntimacyEntry[]
+
+  @@index([isActive])
+}
+
+// ------------------------------------------------------------
+// Cycle — one logged period per person. Per-day detail lives in
+// CycleDayLog.
+// ------------------------------------------------------------
+model Cycle {
+  id        String    @id @default(cuid())
+  personId  String
+  startDate DateTime
+  endDate   DateTime?
+
+  // Actual cycle length / period duration for this logged cycle,
+  // editable independent of the person's rolling default/prediction.
+  cycleLength  Int?
+  periodLength Int?
+
+  birthControlNotes String?
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  person  Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  dayLogs CycleDayLog[]
+
+  @@index([personId, startDate])
+}
+
+enum FlowIntensity {
+  LIGHT
+  MEDIUM
+  HEAVY
+}
+
+enum OvulationTestResult {
+  NEGATIVE
+  POSITIVE
+  PEAK
+}
+
+enum Symptom {
+  CRAMPS
+  HEADACHE
+  MOOD_SWINGS
+  FATIGUE
+  BLOATING
+  BREAST_TENDERNESS
+  ACNE
+  BACK_PAIN
+  NAUSEA
+  FOOD_CRAVINGS
+  INSOMNIA
+}
+
+model CycleDayLog {
+  id      String @id @default(cuid())
+  cycleId String
+  cycle   Cycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  date                DateTime
+  flowIntensity       FlowIntensity?
+  symptoms            Symptom[]
+  basalBodyTemp       Float?
+  ovulationTestResult OvulationTestResult?
+  notes               String?
+
+  @@unique([cycleId, date])
+}
+
+// ------------------------------------------------------------
+// Intimacy log — per person, per day (added mid-build, not in
+// the original spec).
+// ------------------------------------------------------------
+model IntimacyEntry {
+  id        String   @id @default(cuid())
+  personId  String
+  date      DateTime
+  protected Boolean
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId, date])
+}
+
+// ------------------------------------------------------------
+// Visit / Appointment
+// ------------------------------------------------------------
+enum VisitType {
+  CASUAL
+  FORMAL
+}
+
+enum VisitStatus {
+  PLANNED
+  CONFIRMED
+  DONE
+  CANCELLED
+}
+
+model Visit {
+  id          String      @id @default(cuid())
+  scheduledAt DateTime
+  type        VisitType   @default(CASUAL)
+  status      VisitStatus @default(PLANNED)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  people VisitPerson[]
+
+  @@index([scheduledAt])
+}
+
+// Join table — a visit can involve one or more tracked people.
+// Deliberately scoped to Person only: a visit with someone not being
+// cycle-tracked just means creating that Person with tracking off.
+model VisitPerson {
+  id       String @id @default(cuid())
+  visitId  String
+  personId String
+
+  visit  Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([visitId, personId])
+}

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand palette */
+  --color-cream: #f5e9e2;
+  --color-blush: #e3b5a4;
+  --color-rose: #d44d5c;
+  --color-wine: #773344;
+  --color-ink: #160029;
+
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
+  --primary: var(--color-wine);
+  --secondary: var(--color-blush);
+  --accent: var(--color-rose);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-cream: var(--color-cream);
+  --color-blush: var(--color-blush);
+  --color-rose: var(--color-rose);
+  --color-wine: var(--color-wine);
+  --color-ink: var(--color-ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--color-ink);
+    --foreground: var(--color-cream);
+    --primary: var(--color-rose);
+    --secondary: var(--color-wine);
+    --accent: var(--color-blush);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
