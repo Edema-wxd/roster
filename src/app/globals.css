@@ -1,18 +1,56 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 :root {
-  /* Brand palette */
+  /* Brand palette — see Design.md §2 */
   --color-cream: #f5e9e2;
   --color-blush: #e3b5a4;
   --color-rose: #d44d5c;
   --color-wine: #773344;
   --color-ink: #160029;
 
+  /* Semantic tokens, light mode — always reference these (bg-primary, etc.),
+     never the raw brand color name, so dark mode stays correct for free. */
   --background: var(--color-cream);
   --foreground: var(--color-ink);
   --primary: var(--color-wine);
+  --primary-foreground: var(--color-cream);
   --secondary: var(--color-blush);
+  --secondary-foreground: var(--color-ink);
   --accent: var(--color-rose);
+  --accent-foreground: var(--color-cream);
+  --card: var(--color-cream);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-cream);
+  --popover-foreground: var(--color-ink);
+  /* Elevated surface (form fields, calendar cells) — distinct from --card so
+     it stays visibly lighter than --background in both themes. Previously
+     these were hardcoded as raw Tailwind `bg-white`, which broke in dark
+     mode (bright white panels on the ink background). */
+  --surface: #ffffff;
+  --muted: var(--color-blush);
+  --muted-foreground: var(--color-wine);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--color-blush);
+  --input: var(--color-blush);
+  --ring: var(--color-rose);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: var(--color-cream);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-wine);
+  --sidebar-primary-foreground: var(--color-cream);
+  --sidebar-accent: var(--color-blush);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-blush);
+  --sidebar-ring: var(--color-rose);
 }
 
 @theme inline {
@@ -26,22 +64,105 @@
   --color-rose: var(--color-rose);
   --color-wine: var(--color-wine);
   --color-ink: var(--color-ink);
+  --color-surface: var(--surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--color-ink);
-    --foreground: var(--color-cream);
-    --primary: var(--color-rose);
-    --secondary: var(--color-wine);
-    --accent: var(--color-blush);
+/* Dark mode is driven by the `data-theme` attribute on <html> (set by the
+   inline script in layout.tsx before first paint, and by ThemeToggle on
+   click) rather than a media query — this is what makes the switch in the
+   header actually override the OS preference. See Design.md §5. */
+[data-theme="dark"] {
+  --background: var(--color-ink);
+  --foreground: var(--color-cream);
+  --primary: var(--color-rose);
+  --primary-foreground: var(--color-ink);
+  --secondary: var(--color-wine);
+  --secondary-foreground: var(--color-cream);
+  --accent: var(--color-blush);
+  --accent-foreground: var(--color-ink);
+  /* Lighter than --background so raised panels stay visible on ink — see
+     the --surface comment in :root above for why this token exists. */
+  --card: #2b1245;
+  --card-foreground: var(--color-cream);
+  --popover: #2b1245;
+  --popover-foreground: var(--color-cream);
+  --surface: #2b1245;
+  --muted: var(--color-wine);
+  --muted-foreground: var(--color-blush);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: var(--color-wine);
+  --input: var(--color-wine);
+  --ring: var(--color-rose);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: var(--color-ink);
+  --sidebar-foreground: var(--color-cream);
+  --sidebar-primary: var(--color-rose);
+  --sidebar-primary-foreground: var(--color-ink);
+  --sidebar-accent: var(--color-wine);
+  --sidebar-accent-foreground: var(--color-cream);
+  --sidebar-border: var(--color-wine);
+  --sidebar-ring: var(--color-rose);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    /* Tells the browser which palette is actually active so native form
+       control chrome (select popups, checkbox/radio, scrollbars, input
+       caret) matches data-theme instead of silently following the OS
+       preference — without this, an explicit "light" choice on a dark-OS
+       machine (or vice versa) renders inputs with mismatched/illegible
+       UA-default text color. See Design.md §6. */
+    color-scheme: light;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
 }

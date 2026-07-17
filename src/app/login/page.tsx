@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function LoginForm() {
   const router = useRouter();
@@ -36,11 +37,11 @@ function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-cream/60 p-8 shadow-sm"
+      className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-card/60 p-8 shadow-sm"
     >
-      <h1 className="text-2xl font-semibold text-primary">Log In</h1>
+      <h1 className="font-display text-2xl font-semibold text-primary">Log In</h1>
       <p className="text-sm text-foreground/70">
-        Enter your email or access code.
+        Enter the email or access code you signed up with.
       </p>
       <input
         type="text"
@@ -48,7 +49,7 @@ function LoginForm() {
         value={identifier}
         onChange={(e) => setIdentifier(e.target.value)}
         placeholder="Email or access code"
-        className="rounded-lg border border-wine/20 bg-white/80 px-4 py-3 text-foreground outline-none focus:border-primary"
+        className="rounded-lg border border-wine/20 bg-surface/80 px-4 py-3 text-foreground outline-none focus:border-primary"
       />
       {error && <p className="text-sm text-primary">{error}</p>}
       <button
@@ -70,7 +71,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6 font-sans">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-6 font-sans">
+      <ThemeToggle className="absolute right-4 top-4" />
       <Suspense>
         <LoginForm />
       </Suspense>

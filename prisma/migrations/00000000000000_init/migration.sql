@@ -1,11 +1,32 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('WOMAN', 'MAN', 'OTHER');
+
 -- CreateEnum
 CREATE TYPE "FlowIntensity" AS ENUM ('LIGHT', 'MEDIUM', 'HEAVY');
 
 -- CreateEnum
-CREATE TYPE "VisitType" AS ENUM ('VISIT', 'APPOINTMENT');
+CREATE TYPE "OvulationTestResult" AS ENUM ('NEGATIVE', 'POSITIVE', 'PEAK');
+
+-- CreateEnum
+CREATE TYPE "Symptom" AS ENUM ('CRAMPS', 'HEADACHE', 'MOOD_SWINGS', 'FATIGUE', 'BLOATING', 'BREAST_TENDERNESS', 'ACNE', 'BACK_PAIN', 'NAUSEA', 'FOOD_CRAVINGS', 'INSOMNIA');
+
+-- CreateEnum
+CREATE TYPE "VisitType" AS ENUM ('CASUAL', 'FORMAL');
 
 -- CreateEnum
 CREATE TYPE "VisitStatus" AS ENUM ('PLANNED', 'CONFIRMED', 'DONE', 'CANCELLED');
+
+-- CreateTable
+CREATE TABLE "AdminUser" (
+    "id" TEXT NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AdminUser_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "Person" (
@@ -16,8 +37,14 @@ CREATE TABLE "Person" (
     "allergies" TEXT,
     "foodPreferences" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "gender" "Gender" NOT NULL DEFAULT 'WOMAN',
+    "cycleTrackingEnabled" BOOLEAN NOT NULL DEFAULT true,
     "defaultCycleLength" INTEGER NOT NULL DEFAULT 28,
     "defaultPeriodLength" INTEGER NOT NULL DEFAULT 5,
+    "defaultLutealPhaseLength" INTEGER NOT NULL DEFAULT 14,
+    "predictedCycleLength" DOUBLE PRECISION,
+    "predictedVariabilityDays" DOUBLE PRECISION,
+    "predictionLastCalculated" TIMESTAMP(3),
     "userId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -33,16 +60,26 @@ CREATE TABLE "Cycle" (
     "endDate" TIMESTAMP(3),
     "cycleLength" INTEGER,
     "periodLength" INTEGER,
-    "flowIntensity" "FlowIntensity",
-    "symptoms" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "birthControlNotes" TEXT,
     "notes" TEXT,
-    "basalTemp" DOUBLE PRECISION,
-    "ovulationTest" TEXT,
-    "birthControl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Cycle_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CycleDayLog" (
+    "id" TEXT NOT NULL,
+    "cycleId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "flowIntensity" "FlowIntensity",
+    "symptoms" "Symptom"[],
+    "basalBodyTemp" DOUBLE PRECISION,
+    "ovulationTestResult" "OvulationTestResult",
+    "notes" TEXT,
+
+    CONSTRAINT "CycleDayLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -61,9 +98,9 @@ CREATE TABLE "IntimacyEntry" (
 -- CreateTable
 CREATE TABLE "Visit" (
     "id" TEXT NOT NULL,
-    "type" "VisitType" NOT NULL DEFAULT 'VISIT',
-    "status" "VisitStatus" NOT NULL DEFAULT 'PLANNED',
     "scheduledAt" TIMESTAMP(3) NOT NULL,
+    "type" "VisitType" NOT NULL DEFAULT 'CASUAL',
+    "status" "VisitStatus" NOT NULL DEFAULT 'PLANNED',
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -73,20 +110,39 @@ CREATE TABLE "Visit" (
 
 -- CreateTable
 CREATE TABLE "VisitPerson" (
+    "id" TEXT NOT NULL,
     "visitId" TEXT NOT NULL,
     "personId" TEXT NOT NULL,
 
-    CONSTRAINT "VisitPerson_pkey" PRIMARY KEY ("visitId","personId")
+    CONSTRAINT "VisitPerson_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdminUser_identifier_key" ON "AdminUser"("identifier");
+
+-- CreateIndex
+CREATE INDEX "Person_isActive_idx" ON "Person"("isActive");
 
 -- CreateIndex
 CREATE INDEX "Cycle_personId_startDate_idx" ON "Cycle"("personId", "startDate");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "CycleDayLog_cycleId_date_key" ON "CycleDayLog"("cycleId", "date");
+
+-- CreateIndex
 CREATE INDEX "IntimacyEntry_personId_date_idx" ON "IntimacyEntry"("personId", "date");
+
+-- CreateIndex
+CREATE INDEX "Visit_scheduledAt_idx" ON "Visit"("scheduledAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VisitPerson_visitId_personId_key" ON "VisitPerson"("visitId", "personId");
 
 -- AddForeignKey
 ALTER TABLE "Cycle" ADD CONSTRAINT "Cycle_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CycleDayLog" ADD CONSTRAINT "CycleDayLog_cycleId_fkey" FOREIGN KEY ("cycleId") REFERENCES "Cycle"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "IntimacyEntry" ADD CONSTRAINT "IntimacyEntry_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -96,3 +152,4 @@ ALTER TABLE "VisitPerson" ADD CONSTRAINT "VisitPerson_visitId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "VisitPerson" ADD CONSTRAINT "VisitPerson_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

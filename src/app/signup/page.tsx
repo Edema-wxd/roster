@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,12 +34,13 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6 font-sans">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-6 font-sans">
+      <ThemeToggle className="absolute right-4 top-4" />
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-cream/60 p-8 shadow-sm"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-card/60 p-8 shadow-sm"
       >
-        <h1 className="text-2xl font-semibold text-primary">Sign Up</h1>
+        <h1 className="font-display text-2xl font-semibold text-primary">Sign Up</h1>
         <p className="text-sm text-foreground/70">
           Set the email or access code you&apos;ll use to log in. Since this app is for a
           single admin, this can only be done once.
@@ -49,7 +51,7 @@ export default function SignupPage() {
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           placeholder="Email or access code"
-          className="rounded-lg border border-wine/20 bg-white/80 px-4 py-3 text-foreground outline-none focus:border-primary"
+          className="rounded-lg border border-wine/20 bg-surface/80 px-4 py-3 text-foreground outline-none focus:border-primary"
         />
         {error && <p className="text-sm text-primary">{error}</p>}
         <button

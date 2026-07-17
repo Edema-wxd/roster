@@ -2,12 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import type { Gender } from "@/generated/prisma/enums";
 
 export async function addPerson(input: {
   name: string;
   color: string;
+  gender: Gender;
+  cycleTrackingEnabled: boolean;
   defaultCycleLength: number;
   defaultPeriodLength: number;
+  defaultLutealPhaseLength: number;
   notes?: string;
   allergies?: string;
   foodPreferences?: string;
@@ -19,8 +23,11 @@ export async function addPerson(input: {
     data: {
       name: input.name.trim(),
       color: input.color,
+      gender: input.gender,
+      cycleTrackingEnabled: input.cycleTrackingEnabled,
       defaultCycleLength: input.defaultCycleLength,
       defaultPeriodLength: input.defaultPeriodLength,
+      defaultLutealPhaseLength: input.defaultLutealPhaseLength,
       notes: input.notes?.trim() || null,
       allergies: input.allergies?.trim() || null,
       foodPreferences: input.foodPreferences?.trim() || null,

@@ -3,28 +3,43 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addPerson } from "@/app/(app)/people/actions";
+import { PERSON_PALETTE, getNextPersonColor } from "@/lib/personPalette";
+import type { Gender } from "@/generated/prisma/enums";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const DEFAULT_COLORS = ["#D44D5C", "#773344", "#E3B5A4", "#160029", "#8E5572"];
+function defaultTrackingForGender(gender: Gender): boolean {
+  return gender !== "MAN";
+}
 
-export function AddPersonForm() {
+export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [color, setColor] = useState(DEFAULT_COLORS[0]);
+  const [color, setColor] = useState(() => getNextPersonColor(usedColors));
+  const [gender, setGender] = useState<Gender>("WOMAN");
+  const [cycleTrackingEnabled, setCycleTrackingEnabled] = useState(true);
+  const [trackingTouched, setTrackingTouched] = useState(false);
   const [cycleLength, setCycleLength] = useState(28);
   const [periodLength, setPeriodLength] = useState(5);
+  const [lutealLength, setLutealLength] = useState(14);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-cream hover:opacity-90"
-      >
+      <Button type="button" size="lg" onClick={() => setOpen(true)} className="rounded-full">
         + Add Person
-      </button>
+      </Button>
     );
   }
 
@@ -38,8 +53,11 @@ export function AddPersonForm() {
             const { id } = await addPerson({
               name,
               color,
+              gender,
+              cycleTrackingEnabled,
               defaultCycleLength: cycleLength,
               defaultPeriodLength: periodLength,
+              defaultLutealPhaseLength: lutealLength,
             });
             router.push(`/people/${id}`);
           } catch (err) {
@@ -47,68 +65,113 @@ export function AddPersonForm() {
           }
         });
       }}
-      className="flex flex-col gap-3 rounded-2xl bg-cream/60 p-5"
+      className="flex flex-col gap-3 rounded-2xl bg-card/60 p-5"
     >
-      <input
+      <Input
         type="text"
         placeholder="Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoFocus
-        className="rounded border border-wine/20 bg-white/80 px-3 py-2 text-sm"
+        className="h-9"
       />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-foreground/70">Color</span>
-        {DEFAULT_COLORS.map((c) => (
+        {PERSON_PALETTE.map((c) => (
           <button
             type="button"
             key={c}
             onClick={() => setColor(c)}
-            className={`h-6 w-6 rounded-full border-2 ${color === c ? "border-foreground" : "border-transparent"}`}
+            className={`h-6 w-6 shrink-0 rounded-full border-2 ${color === c ? "border-foreground" : "border-transparent"}`}
             style={{ backgroundColor: c }}
           />
         ))}
       </div>
-      <div className="flex gap-3">
-        <label className="flex flex-1 flex-col text-sm text-foreground/70">
-          Cycle length (days)
-          <input
-            type="number"
-            min={15}
-            max={60}
-            value={cycleLength}
-            onChange={(e) => setCycleLength(Number(e.target.value))}
-            className="mt-1 rounded border border-wine/20 bg-white/80 px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex flex-1 flex-col text-sm text-foreground/70">
-          Period length (days)
-          <input
-            type="number"
-            min={1}
-            max={14}
-            value={periodLength}
-            onChange={(e) => setPeriodLength(Number(e.target.value))}
-            className="mt-1 rounded border border-wine/20 bg-white/80 px-3 py-2 text-sm"
-          />
-        </label>
-      </div>
+
+      <Label className="flex flex-col items-start gap-1 text-sm text-foreground/70">
+        Gender
+        <Select
+          value={gender}
+          onValueChange={(value) => {
+            const next = value as Gender;
+            setGender(next);
+            if (!trackingTouched) setCycleTrackingEnabled(defaultTrackingForGender(next));
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="WOMAN">Woman</SelectItem>
+            <SelectItem value="MAN">Man</SelectItem>
+            <SelectItem value="OTHER">Other</SelectItem>
+          </SelectContent>
+        </Select>
+      </Label>
+
+      <Label className="text-sm text-foreground/70">
+        <Checkbox
+          checked={cycleTrackingEnabled}
+          onCheckedChange={(checked) => {
+            setTrackingTouched(true);
+            setCycleTrackingEnabled(checked);
+          }}
+        />
+        Track cycle for this person
+      </Label>
+
+      {cycleTrackingEnabled && (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Label className="flex flex-1 flex-col items-start gap-1 text-sm text-foreground/70">
+            Cycle length (days)
+            <Input
+              type="number"
+              min={15}
+              max={60}
+              value={cycleLength}
+              onChange={(e) => setCycleLength(Number(e.target.value))}
+              className="h-9"
+            />
+          </Label>
+          <Label className="flex flex-1 flex-col items-start gap-1 text-sm text-foreground/70">
+            Period length (days)
+            <Input
+              type="number"
+              min={1}
+              max={14}
+              value={periodLength}
+              onChange={(e) => setPeriodLength(Number(e.target.value))}
+              className="h-9"
+            />
+          </Label>
+          <Label className="flex flex-1 flex-col items-start gap-1 text-sm text-foreground/70">
+            Luteal length (days)
+            <Input
+              type="number"
+              min={8}
+              max={20}
+              value={lutealLength}
+              onChange={(e) => setLutealLength(Number(e.target.value))}
+              className="h-9"
+            />
+          </Label>
+        </div>
+      )}
+
       {error && <p className="text-sm text-primary">{error}</p>}
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={isPending || !name.trim()}
-          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-cream hover:opacity-90 disabled:opacity-50"
-        >
+        <Button type="submit" size="lg" disabled={isPending || !name.trim()} className="rounded-full">
           {isPending ? "Saving…" : "Save"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          size="lg"
+          variant="ghost"
           onClick={() => setOpen(false)}
-          className="rounded-full px-5 py-2 text-sm font-medium text-foreground/70 hover:bg-blush/30"
+          className="rounded-full"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

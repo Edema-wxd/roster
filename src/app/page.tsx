@@ -1,13 +1,15 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center font-sans text-foreground">
-      <h1 className="text-4xl font-semibold tracking-tight text-primary">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center font-sans text-foreground">
+      <ThemeToggle className="absolute right-4 top-4" />
+      <h1 className="font-display text-5xl font-semibold tracking-tight text-primary">
         Roster
       </h1>
       <p className="max-w-md text-lg text-foreground/80">
-        Cycle tracking and scheduling, in one place.
+        One calendar for the cycles, dates, and appointments of the people you keep close.
       </p>
       <div className="flex gap-3">
         <Link

@@ -30,15 +30,15 @@ enum Gender {
 }
 
 model Person {
-  id       String  @id @default(cuid())
-  name     String
-  color    String
-  notes    String?
+  id              String  @id @default(cuid())
+  name            String
+  color           String
+  notes           String?
   allergies       String?
   foodPreferences String?
-  isActive Boolean @default(true)
+  isActive        Boolean @default(true)
 
-  gender Gender @default(WOMAN)
+  gender               Gender  @default(WOMAN)
   // Defaulted from gender at creation time (WOMAN/OTHER -> true, MAN -> false),
   // but always overridable per person — gender itself never hard-gates the UI,
   // this flag does. All cycle-tracking screens/queries must check this flag.
@@ -46,8 +46,8 @@ model Person {
 
   // Prediction baseline — always user-editable, used until enough
   // history exists to weight an adaptive average.
-  defaultCycleLength      Int @default(28)
-  defaultPeriodLength     Int @default(5)
+  defaultCycleLength       Int @default(28)
+  defaultPeriodLength      Int @default(5)
   // Luteal phase length is far less variable than follicular phase and is
   // the standard anchor for back-calculating a predicted ovulation date
   // from the next predicted period start.
