@@ -4,15 +4,19 @@ import { PrismaClient, Prisma } from "@/generated/prisma/client";
 // Neon's compute auto-suspends when idle, and a long-lived pooled connection
 // (the dev-server singleton below, or a warm serverless instance) doesn't
 // always recover on its own after a suspend/resume — every query then fails
-// with "Can't reach database server" until the process is restarted. Retrying
-// a couple of times with backoff lets the first query after a cold start
-// (or a dropped connection) wake Neon back up instead of hard-failing.
+// until the process is restarted. The first query after a cold start surfaces
+// as one of a few messages: "Can't reach database server", "connection
+// terminated", or (observed on the pg driver adapter) "Authentication timed
+// out" while the compute is still spinning up. Retrying a couple of times
+// with backoff lets that first query wake Neon back up instead of hard-failing.
 const RETRY_DELAYS_MS = [400, 1200];
 
 function isTransientConnectionError(error: unknown): boolean {
   if (error instanceof Prisma.PrismaClientInitializationError) return true;
   const message = error instanceof Error ? error.message : String(error);
-  return /can't reach database server|connection terminated|econnrefused|etimedout/i.test(message);
+  return /can't reach database server|connection terminated|econnrefused|etimedout|authentication timed out/i.test(
+    message,
+  );
 }
 
 function createPrismaClient() {

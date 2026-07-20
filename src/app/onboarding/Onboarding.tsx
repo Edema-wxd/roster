@@ -54,10 +54,15 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
   const [startDate, setStartDate] = useState("");
 
   function finish() {
+    setError(null);
     startTransition(async () => {
-      await completeOnboarding();
-      router.push("/dashboard");
-      router.refresh();
+      try {
+        await completeOnboarding();
+        router.push("/dashboard");
+        router.refresh();
+      } catch {
+        setError("Couldn't finish setup — check your connection and try again.");
+      }
     });
   }
 
@@ -385,6 +390,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
               >
                 {isPending ? "Opening…" : "Go to your calendar"}
               </Button>
+              {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
             </div>
           )}
         </div>

@@ -19,13 +19,18 @@ CREATE TYPE "VisitType" AS ENUM ('CASUAL', 'FORMAL');
 -- CreateEnum
 CREATE TYPE "VisitStatus" AS ENUM ('PLANNED', 'CONFIRMED', 'DONE', 'CANCELLED');
 
+-- CreateEnum
+CREATE TYPE "FeedbackStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'DONE');
+
 -- CreateTable
-CREATE TABLE "AdminUser" (
+CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "identifier" TEXT NOT NULL,
+    "pinHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "onboardedAt" TIMESTAMP(3),
 
-    CONSTRAINT "AdminUser_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -46,6 +51,7 @@ CREATE TABLE "Person" (
     "predictedVariabilityDays" DOUBLE PRECISION,
     "predictionLastCalculated" TIMESTAMP(3),
     "userId" TEXT,
+    "ownerId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -102,6 +108,7 @@ CREATE TABLE "Visit" (
     "type" "VisitType" NOT NULL DEFAULT 'CASUAL',
     "status" "VisitStatus" NOT NULL DEFAULT 'PLANNED',
     "notes" TEXT,
+    "ownerId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -117,11 +124,36 @@ CREATE TABLE "VisitPerson" (
     CONSTRAINT "VisitPerson_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Feedback" (
+    "id" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "rating" INTEGER,
+    "status" "FeedbackStatus" NOT NULL DEFAULT 'OPEN',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Feedback_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FeedbackComment" (
+    "id" TEXT NOT NULL,
+    "feedbackId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FeedbackComment_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
-CREATE UNIQUE INDEX "AdminUser_identifier_key" ON "AdminUser"("identifier");
+CREATE UNIQUE INDEX "User_identifier_key" ON "User"("identifier");
 
 -- CreateIndex
 CREATE INDEX "Person_isActive_idx" ON "Person"("isActive");
+
+-- CreateIndex
+CREATE INDEX "Person_ownerId_idx" ON "Person"("ownerId");
 
 -- CreateIndex
 CREATE INDEX "Cycle_personId_startDate_idx" ON "Cycle"("personId", "startDate");
@@ -136,7 +168,19 @@ CREATE INDEX "IntimacyEntry_personId_date_idx" ON "IntimacyEntry"("personId", "d
 CREATE INDEX "Visit_scheduledAt_idx" ON "Visit"("scheduledAt");
 
 -- CreateIndex
+CREATE INDEX "Visit_ownerId_idx" ON "Visit"("ownerId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "VisitPerson_visitId_personId_key" ON "VisitPerson"("visitId", "personId");
+
+-- CreateIndex
+CREATE INDEX "Feedback_status_idx" ON "Feedback"("status");
+
+-- CreateIndex
+CREATE INDEX "FeedbackComment_feedbackId_idx" ON "FeedbackComment"("feedbackId");
+
+-- AddForeignKey
+ALTER TABLE "Person" ADD CONSTRAINT "Person_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Cycle" ADD CONSTRAINT "Cycle_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -148,8 +192,14 @@ ALTER TABLE "CycleDayLog" ADD CONSTRAINT "CycleDayLog_cycleId_fkey" FOREIGN KEY 
 ALTER TABLE "IntimacyEntry" ADD CONSTRAINT "IntimacyEntry_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Visit" ADD CONSTRAINT "Visit_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "VisitPerson" ADD CONSTRAINT "VisitPerson_visitId_fkey" FOREIGN KEY ("visitId") REFERENCES "Visit"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VisitPerson" ADD CONSTRAINT "VisitPerson_personId_fkey" FOREIGN KEY ("personId") REFERENCES "Person"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FeedbackComment" ADD CONSTRAINT "FeedbackComment_feedbackId_fkey" FOREIGN KEY ("feedbackId") REFERENCES "Feedback"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
