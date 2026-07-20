@@ -1,6 +1,6 @@
 # Multi-Partner Cycle & Scheduling Tracker — Project Scope
 
-**Status:** In active development. Next.js app scaffolded, Prisma schema live on Neon, and a working v1 slice is built: sign up, log in, dashboard calendar, people management, cycle logging, and visit/intimacy logging. See §12 for exactly what's implemented vs. still open.
+**Status:** In active development, running locally against a live Neon database (not yet deployed). Implemented: multi-account auth (identifier + PIN, fully isolated rosters), first-run onboarding, the unified Calendar with a "Coming up" panel, Partners (cycle-dial status cards), per-partner cycle logging, adaptive predictions, the Trends timeline + regularity view, visit/intimacy logging, and a product-feedback board. See §12 for exactly what's implemented vs. still open.
 
 ## 1. Purpose
 
@@ -69,9 +69,10 @@ Implemented in `prisma/schema.prisma`, migrated to Neon.
 
 - Native mobile app (web-only, responsive)
 - Push/email notifications (revisit once PWA/native is considered)
-- Multi-admin / shared household accounts
-- Self-service login for tracked people
+- **Shared-dataset** accounts (multiple logins editing one roster). Note the app *does* now support multiple **isolated** accounts (§6) — each with its own private data — which is a different thing from a shared household login.
+- Self-service login for tracked people (`Person.userId` is reserved for it, unbuilt)
 - HIPAA/clinical compliance tooling (not needed — personal/private use)
+- PIN reset / account recovery (no recovery flow yet — revisit before real deployment)
 
 ## 6. Privacy & Security
 
@@ -89,16 +90,17 @@ Implemented in `prisma/schema.prisma`, migrated to Neon.
 - **ORM:** Prisma 7 — type-safe schema matching §3. Note: Prisma 7's new `prisma-client` generator requires an explicit driver adapter at runtime (`@prisma/adapter-pg`), it no longer reads `DATABASE_URL` implicitly inside `PrismaClient()`; see `src/lib/prisma.ts`.
 - **Auth:** Custom identifier + PIN + signed-cookie session (see §12) — not NextAuth/Auth.js, since the "any string identifier, numeric PIN, multiple isolated accounts" flow the app ended up with didn't need a full auth library. PIN hashing uses Node's built-in `scrypt`, no bcrypt/argon2 dependency added.
 - **Hosting:** Vercel (not yet deployed) + Neon Postgres (live).
-- **Charts:** [Recharts](https://recharts.org) — `/trends` page (§12), combined cycle-day line chart and per-person cycle-length trend charts.
+- **Charts / data-viz:** hand-built, no chart library. The `/trends` visualizations — the period-timeline ribbon (`CycleRibbon.tsx`, SVG/CSS) and the regularity stat tiles (`RegularityCard.tsx`) — are custom, validated against the `dataviz` skill's palette checker. (Recharts is still a leftover dependency in `package.json` but is no longer imported anywhere; safe to remove.)
 
 ## 8. Suggested Build Phases
 
 1. **Foundation** — auth, data model, person CRUD. ✅ done
 2. **Cycle logging** — log/edit cycles + symptoms, per-person history view. ✅ done
 3. **Prediction engine** — basic version done (last-cycle + averaging); full adaptive/confidence-range model still open.
-4. **Unified calendar** — overlay view, color coding, phase shading, month/week toggle. ✅ done
+4. **Unified calendar** — overlay view, color coding, phase marks, month/week toggle. ✅ done
 5. **Scheduling** — visits/appointments CRUD ✅ done; conflict flagging ✅ done.
-6. **Polish** — in-app reminders ✅ done; trend charts ✅ done; responsive/mobile pass ❌ not started.
+6. **Polish** — "Coming up" panel ✅ done; Trends ribbon + regularity tiles ✅ done; responsive/mobile pass ✅ done for the redesigned pages (Calendar, Partners, Trends, Onboarding — all checked at 375px).
+7. **Onboarding** — first-run flow for new accounts ✅ done (§12).
 
 ## 9. Open Questions / Remaining Work
 
@@ -130,13 +132,17 @@ Full UI/design conventions (icon library, component library, typography, and kno
 
 **Live app structure**
 
+Nav labels differ from route paths in two places (label change only, no route rename): **Calendar** → `/dashboard`, **Partners** → `/people`. Nav is Calendar · Partners · Trends · Feedback.
+
 - `/` — public home, links to Log In / Sign Up.
-- `/signup` — public. Any string identifier (email or username) + a 4-6 digit PIN — creates a new `User` account (no cap on how many) and logs in immediately.
+- `/signup` — public. Any string identifier (email or username) + a 4-6 digit PIN — creates a new `User` account (no cap on how many), logs in immediately, and redirects to `/onboarding`.
 - `/login` — public. Identifier + PIN. An account created before PIN login existed (the original single-admin row) has no `pinHash` yet — logging in with just the identifier prompts a one-time "set your PIN" step (`/api/auth/set-pin`) instead of comparing against nothing.
-- `/dashboard` — protected. Full-width month/week-toggle calendar (majority of the page, per spec) with a right-hand side panel for the selected day: shows/logs Visits and Intimacy entries for that day, plus a person color legend. Flags when a visit lands on someone's period (logged or predicted).
-- `/people` — protected. List of active people + "Add Person" inline form (name, color, default cycle/period length).
-- `/people/[id]` — protected. Edit person details (name, color, cycle/period defaults, notes, allergies, food preferences) + cycle history list and "Log Cycle" form (start/end date, per-cycle cycle/period length override, flow intensity, symptoms, notes). Includes "Archive" (soft-delete via `isActive`).
-- `/trends` — protected. A combined line chart showing every tracked person's day-of-cycle over time (`src/lib/prediction.ts`'s `cycleDayProgression`, sawtooth reset at each period start, extended past today with predicted future cycles) plus a small per-person cycle-length regularity chart (`cycleLengthHistory`).
+- `/onboarding` — protected, **first-run only** (see the onboarding note under "Known rough edges"). A standalone, skippable flow: Welcome → add first partner → (optional) log her last period → done → calendar.
+- `/dashboard` (nav: **Calendar**) — protected. Full-width month/week-toggle calendar (majority of the page, per spec) with a right-hand side panel for the selected day: add/list Visits, Intimacy, and Cycle entries for that day, plus a **"Coming up"** section (soonest visits + imminent period/fertile windows across everyone). Day cells mark only the two actionable states — **period** (dot) and **fertile window** (diamond), ringed in the partner's color, dashed = predicted; today's number sits in a filled pill. Flags when a visit lands on someone's period (logged or predicted). First-time accounts (`onboardedAt` null) are redirected to `/onboarding`.
+- `/people` (nav: **Partners**) — protected. A grid of **partner status cards** (`PartnerCard.tsx`) — each with a cycle dial showing where she is right now, current phase + "period in N days", and care chips (allergies/food) — plus an inline "Add partner" form.
+- `/people/[id]` — protected. Edit person details (name, color, gender, cycle/period/luteal defaults, notes, allergies, food preferences) + cycle history list and "Log Cycle" form (start/end date, per-cycle length overrides, flow intensity, symptoms, notes) with per-day `CycleDayLog` detail. Includes "Archive" (soft-delete via `isActive`). Shows the current "Day N — Phase" label.
+- `/trends` — protected. Two custom (no chart library) visualizations: a **period-timeline ribbon** (`CycleRibbon.tsx`) — one lane per partner on a shared date axis with logged/expected period bands, fertile-window diamonds, a today line, and a crosshair hover — and per-partner **regularity stat tiles** (`RegularityCard.tsx`: typical cycle length ± variability, a plain-language read, and a dot strip of logged lengths).
+- `/feedback` — protected. A personal product-feedback board (`FeedbackBoard.tsx`): add items (message + optional 1–5 rating), move them through OPEN/IN_PROGRESS/DONE, and thread comments. Backed by `Feedback`/`FeedbackComment`, deliberately **not** owner-scoped (shared product backlog, not per-account data).
 
 **Auth model**
 
@@ -151,16 +157,16 @@ Full UI/design conventions (icon library, component library, typography, and kno
 **Calendar logic** (`src/lib/cycle.ts`, `src/components/Calendar.tsx`)
 
 - Dates are handled as plain `YYYY-MM-DD` string keys throughout, deliberately avoiding timezone-sensitive `Date` conversions so a logged day means the same calendar day regardless of viewer timezone.
-- Per person, per day: shows a solid dot for a logged period day, a faint dot for a predicted phase day, using the full phase model from `src/lib/prediction.ts` (menstrual/ovulation/luteal/follicular), not just a period on/off flag.
+- Per person, per day, the grid marks only the two *actionable* cycle states: **period** (a round dot, `--phase-period`) and **fertile window** (a rotated-square diamond, `--phase-fertile`), each ringed in the partner's color with a dashed ring when predicted. The full menstrual/ovulation/luteal/follicular model is still computed in `src/lib/prediction.ts` — it just isn't all drawn on the calendar (follicular/luteal are the ordinary days); the Partners dial and Trends ribbon carry the fuller picture. See `Design.md` §11.
 - Scheduled visits/appointments and logged intimacy entries are marked with `lucide-react` icons (`CalendarDays`/`Stethoscope`, `Heart`); a visit that lands on someone's period shows an `AlertTriangle` marker too (`visitConflicts` in `Calendar.tsx`).
 - Month/week toggle: `buildWeekCells`/`startOfWeekKey` in `Calendar.tsx` build a single-row 7-day grid sharing the same day-cell rendering as the month grid; switching views re-anchors on the currently selected day.
 - Clicking a day selects it and opens "+ Visit" / "+ Intimacy" / "+ Cycle" forms in the side panel; entries listed below are deletable inline.
 
 **Known rough edges / not yet done**
 
-- Prediction variability (stddev-based confidence range) is computed in `src/lib/prediction.ts` but not yet surfaced in the UI as a visible range/confidence indicator.
-- In-app "period in N days" reminder banner is built (dashboard, within a 5-day window) — no email/push notifications, which remains out of scope for v1 (§5).
-- shadcn migration for `AddPersonForm`/`PersonDetailsForm`/`CycleLog` still pending — see `Design.md` §1.
+- Prediction variability (stddev-based confidence range) is computed in `src/lib/prediction.ts`; the Trends regularity tiles now surface a `± N days` read, but the calendar/dial don't yet draw a visible confidence *band* around predicted dates.
+- No email/push notifications (out of scope for v1, §5) — "what's next" lives in the dashboard's "Coming up" panel instead. The old flat reminder banner was removed.
+- shadcn migration for the day-sidebar forms (`VisitForm`/`CycleForm`/`IntimacyForm` in `Calendar.tsx`) still pending — see `Design.md` §1. (`AddPersonForm`/`PersonDetailsForm`/`CycleLog` are already migrated.)
 - The original single-admin account hasn't set a PIN yet — the next login for that identifier will hit the "set your PIN" step (see §12) rather than a plain PIN prompt. No action needed from here, just don't be surprised by it.
 - No PIN-reset flow if a PIN is forgotten — matches this app's existing "no recovery" reality, revisit before real deployment.
 - **First-run onboarding** (`src/app/onboarding/`) — a standalone, skippable flow shown once per account: Welcome → add first partner → (optional) log her last period → done → calendar. It reuses the owner-scoped `addPerson`/`addCycle` server actions, so the created data lands in the signed-in account's private roster. Gated by `User.onboardedAt`: signup redirects to `/onboarding`; the dashboard redirects first-timers there too; finishing or skipping sets `onboardedAt` (via `completeOnboarding`), after which `/onboarding` always bounces to `/dashboard`. Existing accounts were backfilled to a non-null `onboardedAt`, so only fresh sign-ups ever see it.

@@ -41,7 +41,9 @@ Deliberately **separate** from the brand palette above — brand colors sit too 
 
 `--font-sans` (Geist) and `--font-display` (Fraunces) are wired via `next/font` in `layout.tsx` and mapped in `globals.css`'s `@theme inline` block; `html { @apply font-sans; }` in `@layer base` applies Geist app-wide by default. Fraunces (`font-display`) is used narrowly — see §5.
 
-## 5. Redesign Direction (v2 — in progress)
+## 5. Redesign Direction (v2)
+
+> **Historical / partly superseded.** The calendar-color plan below (a four-phase lightness ramp on every day cell) was later replaced by the two-mark **period + fertile** encoding — see §11. The type, copy, and general direction here still hold. Kept for the "why."
 
 Follow-up to a UI/UX review: the app currently reads as a generic scheduling-SaaS template (`rounded-full` pills, `rounded-2xl` cream cards, uniform Geist weight, a bolted-on rainbow phase-color legend on the calendar) rather than something built for its actual subject — a private, single-admin instrument for tracking the cycles and schedules of people you're close to. This section documents the direction and why, before execution, so the "why" survives past this session.
 
@@ -114,3 +116,16 @@ The old Trends chart was an abstract Recharts "hill" (a line rising menstruation
 **Section 2 — regularity as stat tiles** (`src/components/RegularityCard.tsx`), not lonely line charts. Per partner: a hero "typical cycle length" number, `± N` variability, a plain-language read ("Very regular" ≤1 · "Fairly regular" ≤3 · "Varies a lot" · "Not enough history yet" for <2 logged), and a dot strip of each logged length around the average. Honest for sparse data (the common case) where a 2-point line chart was just noise. Text wears text tokens; only the identity dots carry the partner's Okabe-Ito color (dataviz rule).
 
 The old `CycleTrendChart.tsx` (Recharts) was deleted; `cyclePhaseProgression`/`cycleLengthHistory` in `prediction.ts` stay — the ribbon and regularity tiles consume them directly.
+
+## 12. Onboarding — first-run flow
+
+New accounts land on `/onboarding` (`src/app/onboarding/`) before the app proper, so the first thing a signup sees is a guided setup rather than an empty calendar. Standalone layout (own header with the Roster wordmark + `ThemeToggle`, no app nav), centered card, warm Fraunces headings — same public-page feel as `/login`, `/signup`.
+
+- **Flow**: Welcome → *Add your first partner* → *(optional) log her last period* → *You're all set*. A 4-segment progress bar tracks it. It reuses the owner-scoped `addPerson`/`addCycle` server actions verbatim (no onboarding-specific data path), so whatever's created lands in the new account's private roster and predictions light up immediately.
+- **Seamless / skippable**: a persistent "Skip setup" link (header) exits at any step, and the cycle step has its own "Skip for now". Any exit — finish or skip — calls `completeOnboarding()` which stamps `User.onboardedAt`.
+- **First-time only**: gated entirely on `User.onboardedAt`. `/onboarding` bounces to `/dashboard` once it's set; `/dashboard` bounces first-timers *to* `/onboarding`; existing accounts were backfilled to non-null so they never see it. (See `Project.md` §12 for the flag + the migration-drift caveat around how the column was added.)
+- Copy stays plain and specific per §5's writing guidance; icons per §1 (`Users`, `Droplet`, `Check`, `Sparkles`, `Heart`, `ArrowRight`).
+
+## 13. Feedback board
+
+`/feedback` (`src/components/FeedbackBoard.tsx`, page at `src/app/(app)/feedback/`) is a personal backlog for notes about the app itself — bugs, ideas — not tied to any Person/Visit and **not owner-scoped** (a single shared product list; see the `Feedback`/`FeedbackComment` schema comment). Reachable from the main nav (Calendar · Partners · Trends · **Feedback**). Add an item (message + optional 1–5 star rating), move it through OPEN/IN_PROGRESS/DONE, and thread comments — all via server actions in `feedback/actions.ts`. Follows the same shadcn + `lucide-react` + brand-token conventions as the rest of the app (§1, §2).

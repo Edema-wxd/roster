@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { FeedbackBoard } from "@/components/FeedbackBoard";
 
+// This page doesn't read cookies() (unlike its sibling pages, which call
+// requireUserId() and so get dynamic rendering for free) — without an
+// explicit marker, Next tries to statically prerender it at build time,
+// which means hitting Neon during `next build` and failing if the compute
+// happens to be suspended. Feedback is always-fresh, per-request data, so
+// force it dynamic rather than relying on an incidental auth check to do so.
+export const dynamic = "force-dynamic";
+
 export default async function FeedbackPage() {
   const feedback = await prisma.feedback.findMany({
     orderBy: { createdAt: "desc" },
