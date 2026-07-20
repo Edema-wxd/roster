@@ -352,7 +352,7 @@ function DayLogForm({
           onValueChange={(value) => setFlowIntensity(value as FlowIntensity)}
         >
           <SelectTrigger size="sm" className="text-xs">
-            <SelectValue placeholder="Flow —" />
+            <SelectValue placeholder="Flow" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="LIGHT">Light</SelectItem>
@@ -373,7 +373,7 @@ function DayLogForm({
           onValueChange={(value) => setOvulationTestResult(value as OvulationTestResult)}
         >
           <SelectTrigger size="sm" className="text-xs">
-            <SelectValue placeholder="Ovulation test —" />
+            <SelectValue placeholder="Ovulation test" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="NEGATIVE">Negative</SelectItem>

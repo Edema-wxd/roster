@@ -179,7 +179,7 @@ export function currentPhaseLabel(
           ? "Luteal (estimated)"
           : "Follicular (estimated)";
 
-  return dayNumber && dayNumber > 0 ? `Day ${dayNumber} — ${phaseLabel}` : phaseLabel;
+  return dayNumber && dayNumber > 0 ? `Day ${dayNumber} · ${phaseLabel}` : phaseLabel;
 }
 
 export type PartnerCycleStatus = {

@@ -68,7 +68,7 @@ export default async function TrendsPage() {
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-3xl font-semibold text-primary">Trends</h1>
         <p className="text-sm text-foreground/60">
-          Each partner&apos;s rhythm over time — recent and upcoming periods, and how predictable
+          Each partner&apos;s rhythm over time: recent and upcoming periods, and how predictable
           their cycle is.
         </p>
       </header>

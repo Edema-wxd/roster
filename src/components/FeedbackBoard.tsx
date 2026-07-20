@@ -123,7 +123,7 @@ export function FeedbackSubmitForm() {
         </Button>
       </div>
       {submitted && (
-        <p className="text-xs text-foreground/50">Thanks — your feedback was submitted.</p>
+        <p className="text-xs text-foreground/50">Thanks! Your feedback was submitted.</p>
       )}
     </form>
   );

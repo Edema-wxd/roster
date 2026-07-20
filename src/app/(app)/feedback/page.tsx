@@ -14,7 +14,7 @@ export default async function FeedbackPage() {
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-3xl font-semibold text-primary">Feedback</h1>
         <p className="text-sm text-foreground/60">
-          Bugs, ideas, and anything else about the app — jot it down and track it here.
+          Bugs, ideas, and anything else about the app. Jot it down and track it here.
         </p>
       </header>
 

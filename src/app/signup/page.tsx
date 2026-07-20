@@ -38,7 +38,7 @@ export default function SignupPage() {
         body: JSON.stringify({ identifier, pin }),
       });
     } catch {
-      setError("Couldn't reach the server — check your connection and try again.");
+      setError("Couldn't reach the server. Check your connection and try again.");
       setSubmitting(false);
       return;
     }
@@ -65,7 +65,7 @@ export default function SignupPage() {
       >
         <h1 className="font-display text-2xl font-semibold text-primary">Sign Up</h1>
         <p className="text-sm text-foreground/70">
-          Pick any email or username, and a 4-6 digit PIN — each account keeps its own private
+          Pick any email or username, and a 4-6 digit PIN. Each account keeps its own private
           calendar.
         </p>
         <input

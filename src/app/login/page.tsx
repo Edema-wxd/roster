@@ -40,7 +40,7 @@ function LoginForm() {
         body: JSON.stringify({ identifier, pin }),
       });
     } catch {
-      setError("Couldn't reach the server — check your connection and try again.");
+      setError("Couldn't reach the server. Check your connection and try again.");
       setSubmitting(false);
       return;
     }
@@ -74,7 +74,7 @@ function LoginForm() {
       <h1 className="font-display text-2xl font-semibold text-primary">Log In</h1>
       <p className="text-sm text-foreground/70">
         {needsPinSetup
-          ? "This account doesn't have a PIN yet — set one to continue."
+          ? "This account doesn't have a PIN yet. Set one to continue."
           : "Enter your email or username and PIN."}
       </p>
       <input

@@ -168,7 +168,7 @@ export async function setPinForLegacyAccount(
 
   const user = await prisma.user.findUnique({ where: { identifier: value } });
   if (!user) throw new AuthError("That email or username isn't recognized.");
-  if (user.pinHash) throw new AuthError("This account already has a PIN — log in instead.");
+  if (user.pinHash) throw new AuthError("This account already has a PIN. Log in instead.");
 
   await prisma.user.update({ where: { id: user.id }, data: { pinHash: hashPin(pin) } });
   return { userId: user.id };

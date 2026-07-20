@@ -60,7 +60,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
         await completeOnboarding();
         router.push("/dashboard");
       } catch {
-        setError("Couldn't finish setup — check your connection and try again.");
+        setError("Couldn't finish setup. Check your connection and try again.");
       }
     });
   }
@@ -144,8 +144,8 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
                 Welcome to Roster
               </h1>
               <p className="mt-3 text-foreground/70">
-                Keep track of the people you&apos;re close to — where each of them is in her
-                cycle, and the visits you&apos;re planning — all on one calendar.
+                Keep track of the people you&apos;re close to: where each of them is in her
+                cycle, and the visits you&apos;re planning, all on one calendar.
               </p>
               <p className="mt-2 text-sm text-foreground/50">
                 Let&apos;s add your first partner. It takes a minute, and you can change anything
@@ -175,7 +175,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
                   Who are you tracking?
                 </h1>
                 <p className="mt-1 text-sm text-foreground/60">
-                  Just a name to start — the rest is optional.
+                  Just a name to start. The rest is optional.
                 </p>
               </div>
 
@@ -281,7 +281,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
               {tracking && (
                 <p className="text-xs text-foreground/50">
                   Not sure? The defaults (28-day cycle, 5-day period, 14-day luteal phase) fit
-                  most people — you can fine-tune them anytime from her profile as you log more
+                  most people. You can fine-tune them anytime from her profile as you log more
                   cycles.
                 </p>
               )}
@@ -387,7 +387,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
                 You&apos;re all set
               </h1>
               <p className="mt-3 text-foreground/70">
-                {partnerName} is on your roster. Your calendar shows her cycle at a glance — add
+                {partnerName} is on your roster. Your calendar shows her cycle at a glance. Add
                 more partners, plan a visit, or log intimacy whenever you like.
               </p>
               <div className="mt-6 flex flex-col gap-2 text-left text-sm text-foreground/60">

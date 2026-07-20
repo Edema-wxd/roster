@@ -22,14 +22,14 @@ function formatDay(key: string): string {
 }
 
 function statusLabel(day: RibbonDay | undefined): string {
-  if (!day) return "—";
+  if (!day) return "-";
   switch (day.phase) {
     case "menstrual":
       return day.predicted ? "Period (expected)" : "Period";
     case "ovulation":
       return "Fertile window";
     default:
-      return "—";
+      return "-";
   }
 }
 

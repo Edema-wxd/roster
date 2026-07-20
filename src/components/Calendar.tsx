@@ -531,7 +531,7 @@ export function Calendar({
                     return (
                       <span
                         key={p.id}
-                        title={`${p.name} — ${PHASE_LABEL[status.phase]}${status.predicted ? " (estimated)" : ""}`}
+                        title={`${p.name} · ${PHASE_LABEL[status.phase]}${status.predicted ? " (estimated)" : ""}`}
                         className={isFertile ? "h-2.5 w-2.5 rotate-45 rounded-xs" : "h-3 w-3 rounded-full"}
                         style={{
                           backgroundColor: isFertile ? "var(--phase-fertile)" : "var(--phase-period)",
@@ -705,7 +705,7 @@ export function Calendar({
                     <Heart className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-accent text-accent" />
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {person?.name ?? "Unknown"} —{" "}
+                        {person?.name ?? "Unknown"} ·{" "}
                         {entry.protected ? "Protected" : "Unprotected"}
                       </p>
                       {entry.notes && <p className="text-xs text-foreground/60">{entry.notes}</p>}
@@ -965,7 +965,7 @@ function VisitEntry({
         <TypeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/50" />
         <div>
           <p className={`text-sm font-medium text-foreground ${cancelled ? "line-through" : ""}`}>
-            {visit.type === "FORMAL" ? "Appointment" : "Visit"} —{" "}
+            {visit.type === "FORMAL" ? "Appointment" : "Visit"} ·{" "}
             {visit.people.map((p) => p.name).join(", ")}
             {hasTime && (
               <span className="ml-1.5 font-normal text-foreground/50">
