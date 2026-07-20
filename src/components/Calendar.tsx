@@ -10,6 +10,7 @@ import {
   Droplet,
   Heart,
   Pencil,
+  Sparkles,
   Stethoscope,
   X,
   XCircle,
@@ -22,7 +23,7 @@ import {
   deleteVisit,
   updateVisit,
 } from "@/app/(app)/dashboard/actions";
-import { addDaysToKey, dateKey, isoToKey, isoToTime } from "@/lib/cycle";
+import { addDaysToKey, dateKey, daysBetweenKeys, isoToKey, isoToTime } from "@/lib/cycle";
 import { computePrediction, phaseForDate, type CyclePhase } from "@/lib/prediction";
 import { addCycle } from "@/app/(app)/people/[id]/actions";
 import type { VisitStatus } from "@/generated/prisma/enums";
@@ -49,18 +50,11 @@ export type PersonSummary = {
   defaultLutealPhaseLength: number;
 };
 
-// Phase is encoded as a lightness ramp within the brand's wine/rose family
-// (not four unrelated hues) so the calendar reads as one system, plus
-// filled-vs-hollow as a second channel for legibility independent of hue.
-// Person identity is carried separately by the ring/border color (Okabe-Ito
-// palette, src/lib/personPalette.ts) — see Design.md §5.
-const PHASE_STYLE: Record<CyclePhase, { fill: string; filled: boolean }> = {
-  menstrual: { fill: "#773344", filled: true }, // wine
-  ovulation: { fill: "#D44D5C", filled: true }, // rose
-  luteal: { fill: "#E3B5A4", filled: true }, // blush
-  follicular: { fill: "transparent", filled: false },
-};
-
+// The calendar marks only the two actionable cycle states — period and
+// fertile window — using the theme-aware --phase-period / --phase-fertile
+// tokens (wine / rose), with the partner's Okabe-Ito color as the mark's
+// ring so identity and state stay separate channels. The full four-phase
+// view lives on the partner dial and the Trends ribbon. See Design.md §5.
 const PHASE_LABEL: Record<CyclePhase, string> = {
   menstrual: "Period",
   ovulation: "Ovulation (est.)",
@@ -173,6 +167,30 @@ function startOfWeekKey(key: string): string {
   return addDaysToKey(key, -dayOfWeek);
 }
 
+function relativeDayLabel(fromKey: string, toKey: string): string {
+  const d = daysBetweenKeys(fromKey, toKey);
+  if (d <= 0) return "today";
+  if (d === 1) return "tomorrow";
+  if (d < 7) return `in ${d} days`;
+  return new Date(`${toKey}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function shortDate(key: string): string {
+  return new Date(`${key}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+type UpcomingItem =
+  | { sortKey: string; kind: "visit"; visit: VisitSummary }
+  | { sortKey: string; kind: "period" | "period-now" | "fertile" | "fertile-now"; person: PersonSummary };
+
 export function Calendar({
   people,
   cycles,
@@ -276,6 +294,57 @@ export function Calendar({
   const selectedIntimacy = intimacyByKey.get(selectedKey) ?? [];
   const menstrualIdsToday = new Set(menstrualPeopleOnKey(people, selectedKey).map((p) => p.id));
 
+  // "Coming up" — the soonest visits and imminent period / fertile windows
+  // across everyone, so the dashboard leads with what's next instead of an
+  // empty grid. Visits look out ~3 weeks; cycle events ~2 weeks.
+  const upcoming = useMemo(() => {
+    const items: UpcomingItem[] = [];
+
+    for (const visit of visits) {
+      if (visit.status === "CANCELLED") continue;
+      const key = isoToKey(visit.scheduledAt);
+      const away = daysBetweenKeys(todayKey, key);
+      if (away < 0 || away > 21) continue;
+      items.push({ sortKey: key, kind: "visit", visit });
+    }
+
+    for (const person of people) {
+      if (!person.cycleTrackingEnabled) continue;
+      const prediction = predictionByPerson.get(person.id);
+      if (!prediction) continue;
+
+      const onPeriod =
+        phaseForDate(
+          cyclesByPerson.get(person.id) ?? [],
+          prediction,
+          person.defaultPeriodLength,
+          todayKey,
+        )?.phase === "menstrual";
+      if (onPeriod) {
+        items.push({ sortKey: todayKey, kind: "period-now", person });
+      } else {
+        const away = daysBetweenKeys(todayKey, prediction.predictedNextStartKey);
+        if (away >= 0 && away <= 14) {
+          items.push({ sortKey: prediction.predictedNextStartKey, kind: "period", person });
+        }
+      }
+
+      const fertileStart = daysBetweenKeys(todayKey, prediction.ovulationWindowStartKey);
+      const fertileEnd = daysBetweenKeys(todayKey, prediction.ovulationWindowEndKey);
+      if (fertileEnd >= 0 && fertileStart <= 14) {
+        const activeNow = fertileStart <= 0 && fertileEnd >= 0;
+        items.push({
+          sortKey: activeNow ? todayKey : prediction.ovulationWindowStartKey,
+          kind: activeNow ? "fertile-now" : "fertile",
+          person,
+        });
+      }
+    }
+
+    items.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
+    return items.slice(0, 6);
+  }, [visits, people, predictionByPerson, cyclesByPerson, todayKey]);
+
   function goToMonth(delta: number) {
     const next = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(next.getFullYear());
@@ -284,6 +353,15 @@ export function Calendar({
 
   function goToWeek(delta: number) {
     setWeekStartKey((prev) => addDaysToKey(prev, delta * 7));
+  }
+
+  // Jump the calendar (and selection) to a specific day — used by "Coming up".
+  function goToDay(key: string) {
+    setSelectedKey(key);
+    const [y, m] = key.split("-").map(Number);
+    setViewYear(y);
+    setViewMonth(m - 1);
+    setWeekStartKey(startOfWeekKey(key));
   }
 
   function switchToMonth() {
@@ -381,19 +459,25 @@ export function Calendar({
         )}
         {people.some((p) => p.cycleTrackingEnabled) && (
           <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-foreground/50">
-            {(Object.keys(PHASE_LABEL) as CyclePhase[]).map((phase) => (
-              <span key={phase} className="flex items-center gap-1">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full border border-wine/40"
-                  style={{ backgroundColor: PHASE_STYLE[phase].fill }}
-                />
-                {PHASE_LABEL[phase]}
-              </span>
-            ))}
-            <span className="flex items-center gap-1 border-l border-wine/15 pl-3">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: "var(--phase-period)" }}
+              />
+              Period
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rotate-45 rounded-xs"
+                style={{ backgroundColor: "var(--phase-fertile)" }}
+              />
+              Fertile window
+            </span>
+            <span className="flex items-center gap-1.5 border-l border-wine/15 pl-3">
               <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-dashed border-foreground/40" />
               estimated
             </span>
+            <span className="text-foreground/40">ring = partner</span>
           </div>
         )}
 
@@ -409,6 +493,7 @@ export function Calendar({
           {visibleCells.map((cell) => {
             const key = dateKey(cell.year, cell.month, cell.day);
             const isSelected = key === selectedKey;
+            const isToday = key === todayKey;
             const dayVisits = visitsByKey.get(key) ?? [];
             const dayIntimacy = intimacyByKey.get(key) ?? [];
 
@@ -423,21 +508,33 @@ export function Calendar({
                     : "border-transparent bg-surface/40 hover:bg-surface/70"
                 } ${!cell.inMonth ? "opacity-40" : ""}`}
               >
-                <span className="font-display text-sm font-medium text-foreground/80">
+                <span
+                  className={`flex h-6 min-w-6 items-center justify-center px-1 font-display text-sm font-medium ${
+                    isToday
+                      ? "rounded-full bg-primary text-cream"
+                      : "text-foreground/80"
+                  }`}
+                >
                   {cell.day}
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {people.map((p) => {
                     const status = phaseStatusForKey(p, key);
-                    if (!status) return null;
-                    const style = PHASE_STYLE[status.phase];
+                    // Only the two actionable states get a mark — period and
+                    // fertile window. Follicular/luteal are the ordinary days
+                    // and stay clean (the full phase view lives on the partner
+                    // dial and Trends). See Design.md §5.
+                    if (!status || (status.phase !== "menstrual" && status.phase !== "ovulation")) {
+                      return null;
+                    }
+                    const isFertile = status.phase === "ovulation";
                     return (
                       <span
                         key={p.id}
                         title={`${p.name} — ${PHASE_LABEL[status.phase]}${status.predicted ? " (estimated)" : ""}`}
-                        className="h-3 w-3 rounded-full"
+                        className={isFertile ? "h-2.5 w-2.5 rotate-45 rounded-xs" : "h-3 w-3 rounded-full"}
                         style={{
-                          backgroundColor: style.filled ? style.fill : "var(--color-cream)",
+                          backgroundColor: isFertile ? "var(--phase-fertile)" : "var(--phase-period)",
                           border: `2px ${status.predicted ? "dashed" : "solid"} ${p.color}`,
                         }}
                       />
@@ -628,8 +725,90 @@ export function Calendar({
             })}
           </div>
         </div>
+
+        {people.length > 0 && (
+          <div className="mt-1 flex flex-col gap-2 border-t border-wine/15 pt-3">
+            <h4 className={EYEBROW_CLASS}>Coming up</h4>
+            {upcoming.length === 0 ? (
+              <p className="text-xs text-foreground/40">
+                Nothing on the horizon. Plan a visit or log a cycle to see it here.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {upcoming.map((item, i) => (
+                  <UpcomingRow key={i} item={item} todayKey={todayKey} onSelect={goToDay} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function UpcomingRow({
+  item,
+  todayKey,
+  onSelect,
+}: {
+  item: UpcomingItem;
+  todayKey: string;
+  onSelect: (key: string) => void;
+}) {
+  let icon: React.ReactNode;
+  let iconColor: string | undefined;
+  let title: React.ReactNode;
+  let when: string;
+
+  if (item.kind === "visit") {
+    const { visit } = item;
+    const Icon = visit.type === "FORMAL" ? Stethoscope : CalendarDays;
+    const key = isoToKey(visit.scheduledAt);
+    const time = isoToTime(visit.scheduledAt);
+    const names = visit.people.map((p) => p.name).join(", ");
+    icon = <Icon className="h-3.5 w-3.5" />;
+    title = (
+      <span className="truncate">
+        {visit.type === "FORMAL" ? "Appt with " : "Seeing "}
+        {names}
+      </span>
+    );
+    when =
+      relativeDayLabel(todayKey, key) +
+      (time !== "00:00" ? ` · ${formatTimeLabel(time)}` : ` · ${shortDate(key)}`);
+  } else {
+    const { person } = item;
+    const period = item.kind === "period" || item.kind === "period-now";
+    icon = period ? <Droplet className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />;
+    iconColor = person.color;
+    if (item.kind === "period-now") {
+      title = <span className="truncate">{person.name} is on her period</span>;
+      when = "now";
+    } else if (item.kind === "period") {
+      title = <span className="truncate">{person.name}&apos;s period</span>;
+      when = relativeDayLabel(todayKey, item.sortKey) + " · est.";
+    } else if (item.kind === "fertile-now") {
+      title = <span className="truncate">{person.name} is in her fertile window</span>;
+      when = "now · est.";
+    } else {
+      title = <span className="truncate">{person.name}&apos;s fertile window</span>;
+      when = relativeDayLabel(todayKey, item.sortKey) + " · est.";
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.sortKey)}
+      className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-surface/70"
+    >
+      <span className="shrink-0 text-foreground/50" style={iconColor ? { color: iconColor } : undefined}>
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 text-sm text-foreground">{title}</span>
+      <span className="shrink-0 text-xs text-foreground/45">{when}</span>
+    </button>
   );
 }
 

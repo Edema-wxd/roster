@@ -11,13 +11,28 @@ datasource db {
 }
 
 // ------------------------------------------------------------
-// Admin account — single row in v1. No password: identifier
-// (email or access code) + signed cookie session (see Project.md §12).
+// User account — one per person who signs up. Each account owns its own
+// private roster of tracked partners (Person.ownerId / Visit.ownerId below)
+// — this is NOT the same as Person.userId (reserved for a tracked partner's
+// own future self-login, a separate unbuilt feature, see Project.md §6).
+// Login is identifier (any string — email or username) + a numeric PIN,
+// hashed with scrypt (see src/lib/auth.ts). `pinHash` is nullable only to
+// let the pre-multi-user admin row migrate by setting a PIN on next login
+// (see the ownerId-backfill migration) — every account created going
+// forward always has one.
 // ------------------------------------------------------------
-model AdminUser {
-  id         String   @id @default(cuid())
-  identifier String   @unique
-  createdAt  DateTime @default(now())
+model User {
+  id          String    @id @default(cuid())
+  identifier  String    @unique
+  pinHash     String?
+  createdAt   DateTime  @default(now())
+  // Set when the account finishes (or skips) first-run onboarding. Null =
+  // hasn't onboarded yet → the /onboarding flow shows. The migration
+  // backfills existing accounts to now() so only fresh sign-ups see it.
+  onboardedAt DateTime?
+
+  people Person[] @relation("PersonOwner")
+  visits Visit[]  @relation("VisitOwner")
 }
 
 // ------------------------------------------------------------
@@ -60,8 +75,16 @@ model Person {
   predictedVariabilityDays Float?
   predictionLastCalculated DateTime?
 
-  // Nullable link for future self-login support (see Project.md §6)
+  // Nullable link for future self-login support (see Project.md §6) — a
+  // DIFFERENT concept from ownerId below: this would be the tracked
+  // partner's own account, not the account managing this record.
   userId String?
+
+  // The account that created/manages this Person — every query and
+  // mutation must scope by this so one account's roster is invisible to
+  // another's (see Project.md §6, Design.md §7).
+  ownerId String
+  owner   User   @relation("PersonOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -71,6 +94,7 @@ model Person {
   intimacy IntimacyEntry[]
 
   @@index([isActive])
+  @@index([ownerId])
 }
 
 // ------------------------------------------------------------
@@ -181,12 +205,19 @@ model Visit {
   status      VisitStatus @default(PLANNED)
   notes       String?
 
+  // Scoped directly (rather than derived through VisitPerson -> Person)
+  // since a visit's people are all expected to belong to the same account
+  // and this keeps every dashboard query a flat where-clause.
+  ownerId String
+  owner   User   @relation("VisitOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   people VisitPerson[]
 
   @@index([scheduledAt])
+  @@index([ownerId])
 }
 
 // Join table — a visit can involve one or more tracked people.
@@ -201,4 +232,41 @@ model VisitPerson {
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
 
   @@unique([visitId, personId])
+}
+
+// ------------------------------------------------------------
+// App feedback — a personal backlog for feedback/bug reports about the
+// app itself, not tied to any Person/Visit. Deliberately not scoped by
+// ownerId: this is a feedback log about the product, not per-tenant data,
+// so it stays a single shared list regardless of how multi-user ownership
+// (see User/ownerId above) evolves.
+// ------------------------------------------------------------
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  message   String
+  rating    Int? // optional 1-5 star rating
+  status    FeedbackStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  comments FeedbackComment[]
+
+  @@index([status])
+}
+
+model FeedbackComment {
+  id         String   @id @default(cuid())
+  feedbackId String
+  body       String
+  createdAt  DateTime @default(now())
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
 }

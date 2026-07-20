@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
+import { assertOwnsPerson } from "@/lib/authz";
 import type { Gender } from "@/generated/prisma/enums";
 
 export async function addPerson(input: {
@@ -19,8 +21,10 @@ export async function addPerson(input: {
   if (!input.name.trim()) {
     throw new Error("Name is required.");
   }
+  const ownerId = await requireUserId();
   const person = await prisma.person.create({
     data: {
+      ownerId,
       name: input.name.trim(),
       color: input.color,
       gender: input.gender,
@@ -38,6 +42,9 @@ export async function addPerson(input: {
 }
 
 export async function archivePerson(id: string) {
+  const ownerId = await requireUserId();
+  await assertOwnsPerson(ownerId, id);
+
   await prisma.person.update({ where: { id }, data: { isActive: false } });
   revalidatePath("/people");
 }

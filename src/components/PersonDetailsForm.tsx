@@ -19,6 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const GENDER_LABELS: Record<Gender, string> = {
+  WOMAN: "Woman",
+  MAN: "Man",
+  OTHER: "Other",
+};
+
 export function PersonDetailsForm({
   person,
   currentPhaseLabel,
@@ -110,12 +116,14 @@ export function PersonDetailsForm({
         Gender
         <Select value={gender} onValueChange={(value) => setGender(value as Gender)}>
           <SelectTrigger className="w-full">
-            <SelectValue />
+            <SelectValue>{(value) => GENDER_LABELS[value as Gender]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="WOMAN">Woman</SelectItem>
-            <SelectItem value="MAN">Man</SelectItem>
-            <SelectItem value="OTHER">Other</SelectItem>
+            {(Object.keys(GENDER_LABELS) as Gender[]).map((g) => (
+              <SelectItem key={g} value={g}>
+                {GENDER_LABELS[g]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Label>

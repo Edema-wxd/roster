@@ -2,6 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
+import {
+  assertOwnsCycle,
+  assertOwnsCycleDayLog,
+  assertOwnsPerson,
+} from "@/lib/authz";
 import { computePrediction } from "@/lib/prediction";
 import type {
   Gender,
@@ -53,6 +59,9 @@ export async function updatePersonDetails(
     foodPreferences?: string;
   },
 ) {
+  const ownerId = await requireUserId();
+  await assertOwnsPerson(ownerId, personId);
+
   await prisma.person.update({
     where: { id: personId },
     data: {
@@ -84,6 +93,9 @@ export async function addCycle(
     notes?: string;
   },
 ) {
+  const ownerId = await requireUserId();
+  await assertOwnsPerson(ownerId, personId);
+
   await prisma.cycle.create({
     data: {
       personId,
@@ -101,6 +113,9 @@ export async function addCycle(
 }
 
 export async function deleteCycle(personId: string, cycleId: string) {
+  const ownerId = await requireUserId();
+  await assertOwnsCycle(ownerId, cycleId);
+
   await prisma.cycle.delete({ where: { id: cycleId } });
   await recomputePersonPrediction(personId);
   revalidatePath(`/people/${personId}`);
@@ -119,6 +134,9 @@ export async function addCycleDayLog(
     notes?: string;
   },
 ) {
+  const ownerId = await requireUserId();
+  await assertOwnsCycle(ownerId, cycleId);
+
   await prisma.cycleDayLog.upsert({
     where: { cycleId_date: { cycleId, date: new Date(input.date) } },
     create: {
@@ -142,6 +160,9 @@ export async function addCycleDayLog(
 }
 
 export async function deleteCycleDayLog(personId: string, dayLogId: string) {
+  const ownerId = await requireUserId();
+  await assertOwnsCycleDayLog(ownerId, dayLogId);
+
   await prisma.cycleDayLog.delete({ where: { id: dayLogId } });
   revalidatePath(`/people/${personId}`);
 }

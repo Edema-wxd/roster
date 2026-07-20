@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
 import { PersonDetailsForm } from "@/components/PersonDetailsForm";
 import { CycleLog } from "@/components/CycleLog";
 import { computePrediction, currentPhaseLabel } from "@/lib/prediction";
@@ -10,6 +11,7 @@ export default async function PersonDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const ownerId = await requireUserId();
   const { id } = await params;
   const person = await prisma.person.findUnique({
     where: { id },
@@ -18,7 +20,9 @@ export default async function PersonDetailPage({
     },
   });
 
-  if (!person) notFound();
+  // notFound() rather than a distinct "forbidden" response — don't reveal
+  // that a record with this id exists under someone else's account.
+  if (!person || person.ownerId !== ownerId) notFound();
 
   const cyclesForPrediction = person.cycles.map((c) => ({
     startDate: c.startDate.toISOString(),

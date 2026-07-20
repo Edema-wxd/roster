@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { addPerson } from "@/app/(app)/people/actions";
 import { PERSON_PALETTE, getNextPersonColor } from "@/lib/personPalette";
 import type { Gender } from "@/generated/prisma/enums";
@@ -16,6 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const GENDER_LABELS: Record<Gender, string> = {
+  WOMAN: "Woman",
+  MAN: "Man",
+  OTHER: "Other",
+};
 
 function defaultTrackingForGender(gender: Gender): boolean {
   return gender !== "MAN";
@@ -37,9 +44,11 @@ export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
 
   if (!open) {
     return (
-      <Button type="button" size="lg" onClick={() => setOpen(true)} className="rounded-full">
-        + Add Person
-      </Button>
+      <div className="flex justify-end">
+        <Button type="button" onClick={() => setOpen(true)} className="rounded-full">
+          <Plus className="h-4 w-4" /> Add partner
+        </Button>
+      </div>
     );
   }
 
@@ -65,16 +74,20 @@ export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
           }
         });
       }}
-      className="flex flex-col gap-3 rounded-2xl bg-card/60 p-5"
+      className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/60 p-5"
     >
-      <Input
-        type="text"
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        autoFocus
-        className="h-9"
-      />
+      <p className="font-display text-lg font-semibold text-foreground">New partner</p>
+      <Label className="flex flex-col items-start gap-1 text-sm text-foreground/70">
+        Name
+        <Input
+          type="text"
+          placeholder="e.g. Ada"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          className="h-9"
+        />
+      </Label>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-foreground/70">Color</span>
         {PERSON_PALETTE.map((c) => (
@@ -99,12 +112,14 @@ export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
           }}
         >
           <SelectTrigger className="w-full">
-            <SelectValue />
+            <SelectValue>{(value) => GENDER_LABELS[value as Gender]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="WOMAN">Woman</SelectItem>
-            <SelectItem value="MAN">Man</SelectItem>
-            <SelectItem value="OTHER">Other</SelectItem>
+            {(Object.keys(GENDER_LABELS) as Gender[]).map((g) => (
+              <SelectItem key={g} value={g}>
+                {GENDER_LABELS[g]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Label>
@@ -117,7 +132,7 @@ export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
             setCycleTrackingEnabled(checked);
           }}
         />
-        Track cycle for this person
+        Track their cycle
       </Label>
 
       {cycleTrackingEnabled && (
@@ -159,13 +174,12 @@ export function AddPersonForm({ usedColors }: { usedColors: string[] }) {
       )}
 
       {error && <p className="text-sm text-primary">{error}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" size="lg" disabled={isPending || !name.trim()} className="rounded-full">
-          {isPending ? "Saving…" : "Save"}
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" disabled={isPending || !name.trim()} className="rounded-full">
+          {isPending ? "Saving…" : "Add partner"}
         </Button>
         <Button
           type="button"
-          size="lg"
           variant="ghost"
           onClick={() => setOpen(false)}
           className="rounded-full"

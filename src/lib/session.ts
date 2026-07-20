@@ -8,15 +8,16 @@ function sign(payload: string): string {
   return createHmac("sha256", SECRET).update(payload).digest("hex");
 }
 
-export function createSessionToken(): string {
-  const payload = `admin.${Date.now()}`;
+export function createSessionToken(userId: string): string {
+  const payload = `user.${userId}.${Date.now()}`;
   return `${payload}.${sign(payload)}`;
 }
 
-export function verifySessionToken(token: string | undefined | null): boolean {
-  if (!token) return false;
+/** Returns the signed-in user's id, or null if the token is missing/invalid. */
+export function verifySessionToken(token: string | undefined | null): string | null {
+  if (!token) return null;
   const separatorIndex = token.lastIndexOf(".");
-  if (separatorIndex === -1) return false;
+  if (separatorIndex === -1) return null;
 
   const payload = token.slice(0, separatorIndex);
   const signature = token.slice(separatorIndex + 1);
@@ -24,7 +25,10 @@ export function verifySessionToken(token: string | undefined | null): boolean {
 
   const signatureBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
-  if (signatureBuffer.length !== expectedBuffer.length) return false;
+  if (signatureBuffer.length !== expectedBuffer.length) return null;
+  if (!timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
 
-  return timingSafeEqual(signatureBuffer, expectedBuffer);
+  const parts = payload.split(".");
+  if (parts.length !== 3 || parts[0] !== "user") return null;
+  return parts[1];
 }

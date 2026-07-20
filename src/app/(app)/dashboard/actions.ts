@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
+import {
+  assertOwnsIntimacyEntry,
+  assertOwnsPeople,
+  assertOwnsPerson,
+  assertOwnsVisit,
+} from "@/lib/authz";
 import type { VisitStatus, VisitType } from "@/generated/prisma/enums";
 
 // Time is stored as the literal wall-clock value written in the form, always
@@ -22,8 +29,12 @@ export async function addVisit(input: {
   if (input.personIds.length === 0) {
     throw new Error("Select at least one person.");
   }
+  const ownerId = await requireUserId();
+  await assertOwnsPeople(ownerId, input.personIds);
+
   await prisma.visit.create({
     data: {
+      ownerId,
       scheduledAt: toScheduledAt(input.date, input.time),
       type: input.type,
       notes: input.notes?.trim() || null,
@@ -49,6 +60,10 @@ export async function updateVisit(
   if (input.personIds.length === 0) {
     throw new Error("Select at least one person.");
   }
+  const ownerId = await requireUserId();
+  await assertOwnsVisit(ownerId, id);
+  await assertOwnsPeople(ownerId, input.personIds);
+
   await prisma.visit.update({
     where: { id },
     data: {
@@ -66,6 +81,9 @@ export async function updateVisit(
 }
 
 export async function deleteVisit(id: string) {
+  const ownerId = await requireUserId();
+  await assertOwnsVisit(ownerId, id);
+
   await prisma.visit.delete({ where: { id } });
   revalidatePath("/dashboard");
 }
@@ -79,6 +97,9 @@ export async function addIntimacyEntry(input: {
   if (!input.personId) {
     throw new Error("Select a person.");
   }
+  const ownerId = await requireUserId();
+  await assertOwnsPerson(ownerId, input.personId);
+
   await prisma.intimacyEntry.create({
     data: {
       date: new Date(input.date),
@@ -91,6 +112,9 @@ export async function addIntimacyEntry(input: {
 }
 
 export async function deleteIntimacyEntry(id: string) {
+  const ownerId = await requireUserId();
+  await assertOwnsIntimacyEntry(ownerId, id);
+
   await prisma.intimacyEntry.delete({ where: { id } });
   revalidatePath("/dashboard");
 }

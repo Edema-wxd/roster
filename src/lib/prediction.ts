@@ -182,6 +182,95 @@ export function currentPhaseLabel(
   return dayNumber && dayNumber > 0 ? `Day ${dayNumber} — ${phaseLabel}` : phaseLabel;
 }
 
+export type PartnerCycleStatus = {
+  phase: CyclePhase;
+  predicted: boolean;
+  /** 1-based day within the partner's current cycle, for the dial fill + "day N" label. */
+  dayNumber: number;
+  /** Denominator for the dial fill fraction. */
+  cycleLength: number;
+  /** Days until the next predicted period start; null while a period is underway. */
+  nextPeriodInDays: number | null;
+};
+
+// A partner whose last period was logged more than this many cycles ago is
+// treated as "no recent cycle" — projecting a phase that far past real data
+// would be a confident guess the card shouldn't make.
+const MAX_STALE_CYCLES = 2;
+
+/** Phase for a given 0-based day within a cycle — the same windows the trends
+ * chart uses, so a partner shown mid-follicular there reads the same here. */
+function phaseForCycleDay(
+  d: number,
+  cycleLength: number,
+  periodLength: number,
+  lutealPhaseLength: number,
+): CyclePhase {
+  const periodEnd = periodLength - 1;
+  const ovulationCenter = cycleLength - lutealPhaseLength;
+  const ovulationStart = Math.max(periodEnd + 1, ovulationCenter - 1);
+  const ovulationEnd = Math.max(ovulationStart, ovulationCenter + 1);
+  if (d <= periodEnd) return "menstrual";
+  if (d < ovulationStart) return "follicular";
+  if (d <= ovulationEnd) return "ovulation";
+  return "luteal";
+}
+
+/**
+ * The at-a-glance status a partner card needs: which phase they're in today,
+ * how far into the current cycle (for the dial), and how soon the next period
+ * is. Rolls the last logged period forward by the predicted cycle length to
+ * locate the cycle containing today, so a partner whose last log is a few
+ * cycles back still reads correctly. Returns null when there's no history at
+ * all, or when the last log is too stale to place today with confidence.
+ */
+export function partnerCycleStatus(
+  cycles: CycleForPrediction[],
+  defaultCycleLength: number,
+  defaultPeriodLength: number,
+  defaultLutealPhaseLength: number,
+  todayKey: string,
+): PartnerCycleStatus | null {
+  const prediction = computePrediction(
+    cycles,
+    defaultCycleLength,
+    defaultPeriodLength,
+    defaultLutealPhaseLength,
+  );
+  if (!prediction) return null;
+
+  const cycleLength = prediction.predictedCycleLength;
+  const sorted = [...cycles].sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
+  const lastStartKey = isoToKey(sorted[sorted.length - 1].startDate);
+  const lastPeriodLength = sorted[sorted.length - 1].periodLength ?? defaultPeriodLength;
+
+  if (daysBetweenKeys(lastStartKey, todayKey) > MAX_STALE_CYCLES * cycleLength) {
+    return null;
+  }
+
+  // Roll forward to the start of the cycle that contains today.
+  let currentStartKey = lastStartKey;
+  while (daysBetweenKeys(addDaysToKey(currentStartKey, cycleLength), todayKey) >= 0) {
+    currentStartKey = addDaysToKey(currentStartKey, cycleLength);
+  }
+  // Today could sit before the earliest logged start (a back-dated entry);
+  // clamp the day index so the dial and label stay sane.
+  const d = Math.max(0, daysBetweenKeys(currentStartKey, todayKey));
+  const phase = phaseForCycleDay(d, cycleLength, lastPeriodLength, defaultLutealPhaseLength);
+
+  const nextStartKey = addDaysToKey(currentStartKey, cycleLength);
+  const nextPeriodInDays =
+    phase === "menstrual" ? null : Math.max(0, daysBetweenKeys(todayKey, nextStartKey));
+
+  return {
+    phase,
+    predicted: !(phase === "menstrual" && loggedMenstrualStatus(cycles, defaultPeriodLength, todayKey)),
+    dayNumber: d + 1,
+    cycleLength,
+    nextPeriodInDays,
+  };
+}
+
 export type CyclePhasePoint = {
   date: string;
   height: number; // 0 = menstrual (lowest), 1 = ovulation (highest)

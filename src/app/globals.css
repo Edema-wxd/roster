@@ -31,6 +31,14 @@
      these were hardcoded as raw Tailwind `bg-white`, which broke in dark
      mode (bright white panels on the ink background). */
   --surface: #ffffff;
+  /* Cycle-phase marks for the Trends ribbon (Design.md §5/§10). Only two
+     saturated marks carry meaning — period (wine) and fertile window (rose);
+     wine↔rose passes CVD separation (ΔE 15.1). Theme-aware because raw wine
+     is too dark to read on the dark card surface. --phase-lane is the inset
+     track the marks sit on, a touch off the card so bands read as raised. */
+  --phase-period: var(--color-wine);
+  --phase-fertile: var(--color-rose);
+  --phase-lane: #ece0d8;
   --muted: var(--color-blush);
   --muted-foreground: var(--color-wine);
   --destructive: oklch(0.577 0.245 27.325);
@@ -124,6 +132,11 @@
   --popover: #2b1245;
   --popover-foreground: var(--color-cream);
   --surface: #2b1245;
+  /* Lightened so period/fertile marks clear the 3:1 contrast floor on the
+     dark card surface (raw wine is 1.84:1 there). */
+  --phase-period: #d06b82;
+  --phase-fertile: #ec8a9b;
+  --phase-lane: #3a2352;
   --muted: var(--color-wine);
   --muted-foreground: var(--color-blush);
   --destructive: oklch(0.704 0.191 22.216);

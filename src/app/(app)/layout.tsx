@@ -10,13 +10,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="font-display text-xl font-semibold text-primary">Roster</span>
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium">
             <Link href="/dashboard" className="hover:text-primary">
-              Dashboard
+              Calendar
             </Link>
             <Link href="/people" className="hover:text-primary">
-              People
+              Partners
             </Link>
             <Link href="/trends" className="hover:text-primary">
               Trends
+            </Link>
+            <Link href="/feedback" className="hover:text-primary">
+              Feedback
             </Link>
           </nav>
         </div>

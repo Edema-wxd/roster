@@ -1,68 +1,53 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
 import { Calendar } from "@/components/Calendar";
-import { computePrediction } from "@/lib/prediction";
-import { dateKey, daysBetweenKeys } from "@/lib/cycle";
 
 export default async function DashboardPage() {
-  const [people, cycles, visits, intimacyEntries] = await Promise.all([
-    prisma.person.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.cycle.findMany({ orderBy: { startDate: "desc" } }),
+  const ownerId = await requireUserId();
+
+  // Send first-time accounts through onboarding before the empty calendar.
+  const account = await prisma.user.findUnique({
+    where: { id: ownerId },
+    select: { onboardedAt: true },
+  });
+  if (account && !account.onboardedAt) redirect("/onboarding");
+
+  const people = await prisma.person.findMany({
+    where: { ownerId, isActive: true },
+    orderBy: { name: "asc" },
+  });
+  const personIds = people.map((p) => p.id);
+
+  const [cycles, visits, intimacyEntries] = await Promise.all([
+    prisma.cycle.findMany({
+      where: { personId: { in: personIds } },
+      orderBy: { startDate: "desc" },
+    }),
     prisma.visit.findMany({
+      where: { ownerId },
       include: { people: { include: { person: true } } },
       orderBy: { scheduledAt: "asc" },
     }),
-    prisma.intimacyEntry.findMany({ orderBy: { date: "desc" } }),
+    prisma.intimacyEntry.findMany({
+      where: { personId: { in: personIds } },
+      orderBy: { date: "desc" },
+    }),
   ]);
-
-  const today = new Date();
-  const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
-
-  const reminders = people
-    .filter((p) => p.cycleTrackingEnabled)
-    .map((person) => {
-      const personCycles = cycles
-        .filter((c) => c.personId === person.id)
-        .map((c) => ({
-          startDate: c.startDate.toISOString(),
-          endDate: c.endDate?.toISOString() ?? null,
-          cycleLength: c.cycleLength,
-          periodLength: c.periodLength,
-        }));
-      const prediction = computePrediction(
-        personCycles,
-        person.defaultCycleLength,
-        person.defaultPeriodLength,
-        person.defaultLutealPhaseLength,
-      );
-      if (!prediction) return null;
-      const daysAway = daysBetweenKeys(todayKey, prediction.predictedNextStartKey);
-      if (daysAway < 0 || daysAway > 5) return null;
-      return { personName: person.name, daysAway };
-    })
-    .filter((r): r is { personName: string; daysAway: number } => r !== null);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6">
-      {reminders.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-xl bg-primary/10 p-3 text-sm text-primary">
-          {reminders.map((r) => (
-            <p key={r.personName}>
-              {r.personName}&apos;s period is predicted{" "}
-              {r.daysAway === 0 ? "today" : `in ${r.daysAway} day${r.daysAway === 1 ? "" : "s"}`}.
-            </p>
-          ))}
-        </div>
-      )}
-
       {people.length === 0 ? (
-        <p className="text-foreground/70">
-          Nothing on the calendar yet.{" "}
-          <Link href="/people" className="text-primary underline">
-            Add a person
-          </Link>{" "}
-          to start tracking their cycle and planning visits around it.
-        </p>
+        <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
+          <p className="font-display text-lg text-foreground">Your calendar is empty</p>
+          <p className="mt-1 text-sm text-foreground/60">
+            <Link href="/people" className="text-primary underline">
+              Add a partner
+            </Link>{" "}
+            to start tracking their cycle and planning visits around it.
+          </p>
+        </div>
       ) : (
         <Calendar
           people={people.map((p) => ({
