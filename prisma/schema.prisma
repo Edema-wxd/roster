@@ -21,6 +21,11 @@ datasource db {
 // (see the ownerId-backfill migration) — every account created going
 // forward always has one.
 // ------------------------------------------------------------
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
 model User {
   id          String    @id @default(cuid())
   identifier  String    @unique
@@ -30,6 +35,9 @@ model User {
   // hasn't onboarded yet → the /onboarding flow shows. The migration
   // backfills existing accounts to now() so only fresh sign-ups see it.
   onboardedAt DateTime?
+  // Gates read/respond access to the /feedback board (see feedback/actions.ts).
+  // Every account defaults to USER; SUPER_ADMIN is granted manually.
+  role        Role      @default(USER)
 
   people Person[] @relation("PersonOwner")
   visits Visit[]  @relation("VisitOwner")

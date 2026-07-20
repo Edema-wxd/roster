@@ -44,6 +44,24 @@ export async function requireUserId(): Promise<string> {
   return userId;
 }
 
+/** True if the signed-in account holds the SUPER_ADMIN role (e.g. can read
+ * and respond to feedback from every account — see feedback/actions.ts). */
+export async function isSuperAdmin(): Promise<boolean> {
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return user?.role === "SUPER_ADMIN";
+}
+
+/** Same as isSuperAdmin, but throws — for Server Actions that manage
+ * feedback on behalf of every account and must never run for a regular user. */
+export async function requireSuperAdmin(): Promise<string> {
+  const userId = await requireUserId();
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (user?.role !== "SUPER_ADMIN") throw new Error("Not authorized.");
+  return userId;
+}
+
 const PIN_PATTERN = /^\d{4,6}$/;
 const MAX_IDENTIFIER_LENGTH = 200;
 

@@ -59,7 +59,6 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
       try {
         await completeOnboarding();
         router.push("/dashboard");
-        router.refresh();
       } catch {
         setError("Couldn't finish setup — check your connection and try again.");
       }
@@ -279,6 +278,14 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
                 </div>
               )}
 
+              {tracking && (
+                <p className="text-xs text-foreground/50">
+                  Not sure? The defaults (28-day cycle, 5-day period, 14-day luteal phase) fit
+                  most people — you can fine-tune them anytime from her profile as you log more
+                  cycles.
+                </p>
+              )}
+
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <div className="mt-2 flex items-center justify-between">
@@ -319,6 +326,20 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
                 </h1>
                 <p className="mt-1 text-sm text-foreground/60">
                   This lets Roster predict her cycle right away. You can skip it and log one later.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-muted/40 p-3 text-xs leading-relaxed text-foreground/60">
+                <p className="font-medium text-foreground/70">How Roster predicts her cycle</p>
+                <p className="mt-1">
+                  A cycle runs from the first day of one period to the first day of the next.
+                  Roster counts that first date, plus her average cycle and luteal lengths, to
+                  predict her next period and fertile window.
+                </p>
+                <p className="mt-1">
+                  For the most accurate start: use the first day of full flow, not light spotting
+                  beforehand. Logging each period as it happens (rather than from memory) sharpens
+                  predictions over time.
                 </p>
               </div>
 

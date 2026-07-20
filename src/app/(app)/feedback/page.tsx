@@ -1,19 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { FeedbackBoard } from "@/components/FeedbackBoard";
+import { isSuperAdmin } from "@/lib/auth";
+import { FeedbackBoard, FeedbackSubmitForm } from "@/components/FeedbackBoard";
 
-// This page doesn't read cookies() (unlike its sibling pages, which call
-// requireUserId() and so get dynamic rendering for free) — without an
-// explicit marker, Next tries to statically prerender it at build time,
-// which means hitting Neon during `next build` and failing if the compute
-// happens to be suspended. Feedback is always-fresh, per-request data, so
-// force it dynamic rather than relying on an incidental auth check to do so.
+// Calls isSuperAdmin(), which reads cookies() — that alone makes this page
+// dynamic, same effect as the sibling pages' requireUserId() call.
 export const dynamic = "force-dynamic";
 
 export default async function FeedbackPage() {
-  const feedback = await prisma.feedback.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { comments: { orderBy: { createdAt: "asc" } } },
-  });
+  const canReadFeedback = await isSuperAdmin();
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
@@ -24,20 +18,31 @@ export default async function FeedbackPage() {
         </p>
       </header>
 
-      <FeedbackBoard
-        items={feedback.map((f) => ({
-          id: f.id,
-          message: f.message,
-          rating: f.rating,
-          status: f.status,
-          createdAt: f.createdAt.toISOString(),
-          comments: f.comments.map((c) => ({
-            id: c.id,
-            body: c.body,
-            createdAt: c.createdAt.toISOString(),
-          })),
-        }))}
-      />
+      {canReadFeedback ? <AdminFeedbackBoard /> : <FeedbackSubmitForm />}
     </div>
+  );
+}
+
+async function AdminFeedbackBoard() {
+  const feedback = await prisma.feedback.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { comments: { orderBy: { createdAt: "asc" } } },
+  });
+
+  return (
+    <FeedbackBoard
+      items={feedback.map((f) => ({
+        id: f.id,
+        message: f.message,
+        rating: f.rating,
+        status: f.status,
+        createdAt: f.createdAt.toISOString(),
+        comments: f.comments.map((c) => ({
+          id: c.id,
+          body: c.body,
+          createdAt: c.createdAt.toISOString(),
+        })),
+      }))}
+    />
   );
 }

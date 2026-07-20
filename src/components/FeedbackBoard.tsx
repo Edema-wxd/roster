@@ -84,38 +84,55 @@ function StaticStars({ rating }: { rating: number }) {
   );
 }
 
-export function FeedbackBoard({ items }: { items: FeedbackItem[] }) {
+/** The submit form alone — used both on the admin board and as the entire
+ * page for regular users, who can send feedback but not read or respond to
+ * the board (see feedback/page.tsx and feedback/actions.ts). */
+export function FeedbackSubmitForm() {
   const [message, setMessage] = useState("");
   const [rating, setRating] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="flex flex-col gap-6">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          startTransition(async () => {
-            await addFeedback({ message, rating: rating || undefined });
-            setMessage("");
-            setRating(0);
-          });
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        startTransition(async () => {
+          await addFeedback({ message, rating: rating || undefined });
+          setMessage("");
+          setRating(0);
+          setSubmitted(true);
+        });
+      }}
+      className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/60 p-5"
+    >
+      <p className="font-display text-lg font-semibold text-foreground">Leave feedback</p>
+      <Textarea
+        value={message}
+        onChange={(e) => {
+          setMessage(e.target.value);
+          setSubmitted(false);
         }}
-        className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/60 p-5"
-      >
-        <p className="font-display text-lg font-semibold text-foreground">Leave feedback</p>
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="What's working, what's not, what would you like to see?"
-          rows={3}
-        />
-        <div className="flex items-center justify-between">
-          <StarRating value={rating} onChange={setRating} />
-          <Button type="submit" disabled={isPending || !message.trim()} className="rounded-full">
-            {isPending ? "Saving…" : "Submit"}
-          </Button>
-        </div>
-      </form>
+        placeholder="What's working, what's not, what would you like to see?"
+        rows={3}
+      />
+      <div className="flex items-center justify-between">
+        <StarRating value={rating} onChange={setRating} />
+        <Button type="submit" disabled={isPending || !message.trim()} className="rounded-full">
+          {isPending ? "Saving…" : "Submit"}
+        </Button>
+      </div>
+      {submitted && (
+        <p className="text-xs text-foreground/50">Thanks — your feedback was submitted.</p>
+      )}
+    </form>
+  );
+}
+
+export function FeedbackBoard({ items }: { items: FeedbackItem[] }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <FeedbackSubmitForm />
 
       <div className="flex flex-col gap-3">
         {items.length === 0 && (
