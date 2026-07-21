@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -112,22 +113,11 @@ export function CycleLog({
           <div className="flex flex-col gap-3 sm:flex-row">
             <Label className="flex flex-1 flex-col items-start gap-1 text-sm text-foreground/70">
               Start date
-              <Input
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-9"
-              />
+              <DatePicker value={startDate} onChange={setStartDate} className="h-9" />
             </Label>
             <Label className="flex flex-1 flex-col items-start gap-1 text-sm text-foreground/70">
               End date (optional)
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-9"
-              />
+              <DatePicker value={endDate} onChange={setEndDate} className="h-9" />
             </Label>
           </div>
 

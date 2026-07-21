@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -345,13 +346,7 @@ export function Onboarding({ suggestedColor }: { suggestedColor: string }) {
 
               <Label className="flex flex-col items-start gap-1 text-sm text-foreground/70">
                 Period start date
-                <Input
-                  type="date"
-                  max={todayKey()}
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-10"
-                />
+                <DatePicker value={startDate} onChange={setStartDate} max={todayKey()} />
               </Label>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
